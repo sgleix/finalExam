@@ -132,4 +132,3 @@ void doSomethingWithNumber(int number)
 {
     printf("Received number from the client: %d\n", number);
 }
-

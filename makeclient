@@ -1,1 +1,14 @@
-djadidw
+clientWithMenu: clientWithMenu.o getPut.o DieWithError.o
+	gcc clientWithMenu.o getPut.o DieWithError.o -o client
+
+clientWithMenu.o: clientWithMenu.c
+	gcc -c clientWithMenu.c
+	
+getPut.o: getPut.c
+	gcc -c getPut.c
+
+DieWithError.o: DieWithError.c
+	gcc -c DieWithError.c
+	
+clean:
+	rm -f client clientWithMenu.o getPut.o DieWithError.o
