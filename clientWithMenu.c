@@ -179,4 +179,3 @@ void sendNumber(int sock)
     number = htonl(number);
     put(sock, &number, sizeof(int));
 }
-

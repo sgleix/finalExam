@@ -12,5 +12,3 @@ DieWithError.o: DieWithError.c
 	
 clean:
 	rm -f client clientWithMenu.o getPut.o DieWithError.o
-	
-	
