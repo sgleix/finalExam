@@ -1,3 +1,6 @@
+#include <sys/socket.h>
+
+
 // Function to receive data from a socket
 void get(int sock, void *buffer, unsigned int bufferSize)
 {
