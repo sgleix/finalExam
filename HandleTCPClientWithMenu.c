@@ -3,6 +3,7 @@
 #include <unistd.h>     
 #include <stdlib.h>
 #include <string.h>
+#include <netinet/in.h>
 
 #define RCVBUFSIZE 32   
 #define NAME_SIZE 21 
@@ -132,3 +133,4 @@ void doSomethingWithNumber(int number)
 {
     printf("Received number from the client: %d\n", number);
 }
+
