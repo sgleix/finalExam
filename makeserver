@@ -1,17 +1,25 @@
+# Makefile for serverWithMenu
+
+# Rule to build the server executable
 serverWithMenu: serverWithMenu.o HandleTCPClientWithMenu.o getPut.o DieWithError.o
-	gcc serverWithMenu.o HandleTCPClientWithMenu.o getPut.o DieWithError.o -o serverWithMenu
+    gcc serverWithMenu.o HandleTCPClientWithMenu.o getPut.o DieWithError.o -o serverWithMenu
 
+# Rule to compile serverWithMenu.c
 serverWithMenu.o: serverWithMenu.c
-	gcc -c serverWithMenu.c
-	
+    gcc -c serverWithMenu.c
+
+# Rule to compile HandleTCPClientWithMenu.c
 HandleTCPClientWithMenu.o: HandleTCPClientWithMenu.c
-	gcc -c HandleTCPClientWithMenu.c
+    gcc -c HandleTCPClientWithMenu.c
 
+# Rule to compile getPut.c
 getPut.o: getPut.c
-	gcc -c getPut.c
+    gcc -c getPut.c
 
+# Rule to compile DieWithError.c
 DieWithError.o: DieWithError.c
-	gcc -c DieWithError.c
-	
+    gcc -c DieWithError.c
+
+# Rule to clean up the directory
 clean:
-	rm -f serverWithMenu ServerWithMenu.o HandleTCPClientWithMenu.o getPut.o DieWithError.o
+    rm -f serverWithMenu serverWithMenu.o HandleTCPClientWithMenu.o getPut.o DieWithError.o

@@ -1,14 +1,21 @@
+# Makefile for clientWithMenu
+
+# Rule to build the client executable
 clientWithMenu: clientWithMenu.o getPut.o DieWithError.o
-	gcc clientWithMenu.o getPut.o DieWithError.o -o clientWithMenu
+    gcc clientWithMenu.o getPut.o DieWithError.o -o clientWithMenu
 
+# Rule to compile clientWithMenu.c
 clientWithMenu.o: clientWithMenu.c
-	gcc -c clientWithMenu.c
-	
-getPut.o: getPut.c
-	gcc -c getPut.c
+    gcc -c clientWithMenu.c
 
+# Rule to compile getPut.c
+getPut.o: getPut.c
+    gcc -c getPut.c
+
+# Rule to compile DieWithError.c
 DieWithError.o: DieWithError.c
-	gcc -c DieWithError.c
-	
+    gcc -c DieWithError.c
+
+# Rule to clean up the directory
 clean:
-	rm -f client clientWithMenu.o getPut.o DieWithError.o
+    rm -f clientWithMenu clientWithMenu.o getPut.o DieWithError.o
