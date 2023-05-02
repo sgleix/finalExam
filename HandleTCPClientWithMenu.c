@@ -3,16 +3,23 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <arpa/inet.h>
+#include <sys.types.h>35
 #include <dirent.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <libgen.h>
 
 #define RCVBUFSIZE 32
-#define NAME_SIZE 21
+#define NAME_SIZE 32
 #define MAX_FILENAME_LENGTH 256
 #define MAX_LINE_LENGTH 1024
+
+struct stat mystat, *sp;
+char * t1 ="xwrxwrxwr-------";
+char * t2 ="----------------";
 
 struct menu {
     unsigned char line1[20];
@@ -24,12 +31,17 @@ void DieWithError(char *errorMessage);
 void get(int, void *, unsigned int);
 void put(int, void *, unsigned int);
 unsigned int sendMenuAndWaitForResponse(int);
-char *askForFileName(int);
-void handleGetRequest(int);
-void handleDirectoryRequest(int);
+void askForFileName(int sock, char *, unsigned int);
+long findSize(FILE * fp);
+void sendFileToClient(char * filename, int sock);
+//void handleGetRequest(int);
+//void handleDirectoryRequest(int);
 void HandleTCPClient(int);
+void ls_dir2(char * dname, char * buffer);
 
-int main(int argc, char *argv[]) {
+
+//NASTY MF!
+/*int main(int argc, char *argv[]) {
     int servSock;
     int clntSock;
     unsigned short servPort;
@@ -81,7 +93,7 @@ int main(int argc, char *argv[]) {
     }
 
     return 0;
-}
+} */
 
 
 void DieWithError(char *errorMessage) {
@@ -90,31 +102,63 @@ void DieWithError(char *errorMessage) {
 }
 
 
-void get(int sock, void *buffer, unsigned int length)
+void get(int sock, void *buffer, unsigned int bufferSize)
 {
-    unsigned char *buf = (unsigned char*) buffer;
+    int totalBytesReceived = 0;
+    int bytesReceived = 0;
 
-    int totalBytesRcvd = 0; /* Total bytes received so far */
-    int bytesRcvd = 0; /* Bytes received in last recv() call */
-    while (totalBytesRcvd < length)
-    {
-        /* Receive up to the buffer size bytes from the sender */
-        bytesRcvd = recv(sock, buf + totalBytesRcvd, length - totalBytesRcvd, 0);
-        if (bytesRcvd <= 0)
-        {
-            DieWithError("recv() failed or connection closed prematurely");
-        }
-        totalBytesRcvd += bytesRcvd; /* Keep tally of total bytes */
+    while (totalBytesReceived < bufferSize) {
+	    bytesReceived = recv(sock, buffer + totalBytesReceived, bufferSize - totalBytesReceived, 0);
+	    if (bytesReceived < 0) 
+	    {
+		DieWithError("recv() failed");
+	    } else if (bytesReceived == 0) {
+		    DieWithError("Connection closed prematurely");
+	    }
+	    totalBytesreceived += bytesReceived;
     }
 }
 
 
-void put(int sock, void *buf, unsigned int bufSize) {
-    unsigned int numBytes = send(sock, buf, bufSize, 0);
-    if (numBytes < 0)
-        DieWithError("send() failed");
-    else if (numBytes != bufSize)
-        DieWithError("sent unexpected number of bytes");
+void put(int sock, void *buffer, unsigned int bufferSize) {
+    int toatlBytesSent = 0;
+    int bytesSent = 0;
+
+    while (totalBytesSent < bufferSize) {
+	    bytesSent = send(sock, buffer + totalBytesSent, bufferSize - totalBytesSent, 0);
+	    if (bytesSent < 0) {
+		    DieWithError("send() failed\n");
+	    }
+	    toatlBytesSent += bytesSent;
+    }
+}
+
+void ls_dir2(char * dname, char * dst) {
+	DIR *dp;
+	struct dirent *dirp;
+	dp = opendir(dname);
+	while((dirp = readdir(dp)) != null) {
+		strcat(dst, dirp->dname);
+		strcat(dst, "\n");
+	}
+	closedir(dp);
+}
+
+void sendFileToClient(char * filename, int sock) 
+{
+	long fileSize;
+	FILE* fp = fopen(filename, "r");
+	if (fp == NULL) {
+		DieWithError("File not found");
+	}
+	fileSize = findSize(fp);
+	int size = htonl(fileSize);
+	put(sock, &size, sizeof(fileSize));
+	char * buffer = (char *)malloc(sizeof(char) * fileSize);
+	fread(buffer, sizeof(char), fileSize, fp);
+	printf("%s\n", buffer);
+	put(sock, buffer, fileSize);
+	fclose(fp);
 }
 
 
@@ -123,8 +167,8 @@ unsigned int sendMenuAndWaitForResponse(int clntSocket)
     struct menu mainMenu;
     unsigned int response = 0;
     memset(&mainMenu, 0, sizeof(struct menu)); /* Zero out structure */
-    strcpy(mainMenu.line1,"1) Get directory listing\n");
-    strcpy(mainMenu.line2, "2) Select a file\n");
+    strcpy(mainMenu.line1,"1) Select a file\n");
+    strcpy(mainMenu.line2, "2) list available files\n");
     strcpy(mainMenu.line3, "3) Quit\n");
     printf("Sending menu\n");
     put(clntSocket, &mainMenu, sizeof(struct menu));
@@ -132,60 +176,19 @@ unsigned int sendMenuAndWaitForResponse(int clntSocket)
     return ntohl(response);
 }
 
-char *askForFileName(int socket) {
-    char *filename = malloc(MAX_FILENAME_LENGTH);
-    if (!filename) {
-        DieWithError("Error allocating memory");
-    }
-    char buffer[MAX_LINE_LENGTH];
-    int recvMsgSize;
-
-    while (1) {
-        printf("Enter the name of the file to retrieve: ");
-        fflush(stdout);
-
-        if (fgets(buffer, MAX_LINE_LENGTH, stdin) == NULL) {
-            printf("\n");
-            continue;
-        }
-
-        int len = strlen(buffer);
-        if (buffer[len-1] == '\n') {
-            buffer[len-1] = '\0';
-        }
-
-        if (strcmp(buffer, "quit") == 0) {
-            free(filename);
-            return NULL;
-        }
-
-        if (strlen(buffer) == 0) {
-            continue;
-        }
-
-        if (send(socket, buffer, strlen(buffer), 0) < 0) {
-            DieWithError("send() failed");
-        }
-
-        if ((recvMsgSize = recv(socket, filename, MAX_FILENAME_LENGTH - 1, 0)) < 0) {
-            DieWithError("recv() failed");
-        }
-
-        filename[recvMsgSize] = '\0';
-
-        if (strcmp(filename, "not_found") == 0) {
-            printf("File not found.\n");
-            continue;
-        }
-
-        break;
-    }
-
-    return filename;
+void askForFileName(int socket)
+{
+   unsigned char msg[80];
+   memset(msg, 0, sizeof(msg));
+   strcpy(msg, "Enter file name from list of directories:\n");
+   put(sock, msg, sizeof(msg));
+   memset(name, 0, NAME_SIZE);
+   get(sock, name, NAME_SIZE);
+   printf("Received file name from the client: %s\n", name);
 }
 
 
-void handleGetRequest(int clntSocket) {
+/*void handleGetRequest(int clntSocket) {
     // Ask for the file name
     char* fileName = askForFileName(clntSocket);
 
@@ -205,10 +208,10 @@ void handleGetRequest(int clntSocket) {
     // Free memory and close file pointer
     free(fileName);
     fclose(fp);
-}
+} */
 
-
-void handleDirectoryRequest(int sock) {
+//girl what
+/*void handleDirectoryRequest(int sock) {
     DIR *dir;
     struct dirent *entry;
     char *dir_name = ".";
@@ -234,7 +237,7 @@ void handleDirectoryRequest(int sock) {
     }
 
     put(sock, buffer, strlen(buffer));
-}
+} */
 
 
 
@@ -243,8 +246,11 @@ void handleTCPClient(int clntSocket)
     char menu[] = "\nPlease choose an option:\n1. Get directory listing\n2. Select a file\n3. Quit\n";
     char recvBuffer[RCVBUFSIZE];
     int recvMsgSize;
-    int option = 0;
+    unsigned char name[NAME_SIZE]; // max length 
+    unsigned int option = 0;
     int quitFlag = 0;
+    unsigned char errorMsg[] = "Invalid Choice!";
+    unsigned char bye{} = "Bye!";
 
     while (!quitFlag) {
         // Send menu to client
@@ -252,19 +258,34 @@ void handleTCPClient(int clntSocket)
 
         switch (option) {
         case 1:
-            handleDirectoryRequest(clntSocket);
+	    printf("Client chose 1\n");
+            //handleDirectoryRequest(clntSocket);
+	    askForFileName(clntSocket,name, sizeof(name));
+	    sendFiletoClient(name, clntSocket);
             break;
         case 2:
-            handleGetRequest(clntSocket);
+	    printf("Client chose 2\n");
+            //handleGetRequest(clntSocket);
+	    char dirbuffer[5000];
+	    char cwd[1024];
+	    getcwd(cwd, sizeof(cwd));
+	    memset(dirbuffer, 0, sizeof(dirbuffer));
             break;
         case 3:
             quitFlag = 1;
             break;
         default:
             DieWithError("Invalid option selected.");
+	    //NOT supposed to do this!!
             break;
         }
-    }
+	option = sendMenuAndWaitForResponse(clntSocket);
+    } //ends the while loop
+
+    put(clntSocket, bye, sizeof(bye));
+    close(clntSocket);
+    printf("Connection with client %d closed.\n", clntSocket);
 
     close(clntSocket); // Close client socket
 }
+
