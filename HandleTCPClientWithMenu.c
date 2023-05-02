@@ -39,6 +39,13 @@ void sendFileToClient(char *filename, int sock);
 void HandleTCPClient(int);
 void ls_dir2(char *dname, char *buffer);
 
+long findSize(FILE *fp) {
+  fseek(fp, 0, SEEK_END);
+
+  long res = ftell(fp);
+  fseek(fp, 0, SEEK_SET);
+  return res;
+}
 void DieWithError(char *errorMessage) {
   perror(errorMessage);
   exit(1);
