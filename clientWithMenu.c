@@ -1,4 +1,5 @@
 // Required header files
+// Our team received help from Micah Parilla
 #include <stdio.h>      
 #include <sys/socket.h> 
 #include <arpa/inet.h>  
@@ -7,8 +8,8 @@
 #include <unistd.h>    
 
 // Constants
-#define RCVBUFSIZE 100   
-#define NAME_SIZE 21 
+#define RCVBUFSIZE 100  
+#define NAME_SIZE 100
 
 // Struct for transmitting data (x, y, operation)
 typedef struct{
@@ -34,21 +35,23 @@ struct menu{
 void DieWithError(char *errorMessage);  
 void get(int, void *, unsigned int);
 void put(int, void *, unsigned int);
+void getLsdir(int sock);
 void talkToServer(int);
 unsigned int displayMenuAndSendSelection(int);
 void sendName(int);
-void sendNumber(int);
+void getFile(int sock);
+//void sendNumber(int);
 
 int main(int argc, char *argv[])
 {
-    int sock;                        
-    struct sockaddr_in echoServAddr; 
-    unsigned short echoServPort;     
-    char *servIP;                    
-    char *echoString;                
-    unsigned int echoStringLen;      
-    int bytesRcvd, totalBytesRcvd;   
-    int answer;
+    int sock;                       	//descriptor for the socket 
+    struct sockaddr_in echoServAddr; 	//echoes server address
+    unsigned short echoServPort;     	//echoes the server port
+    char *servIP;                    	//server's ip address
+    char *echoString;                	//string that's sent to server
+    unsigned int echoStringLen;      	//length of string to echo
+    int bytesRcvd, totalBytesRcvd;   	//bytes read in single recv() and total bytes
+    int answer;				
 
     // Data structures for incoming and outgoing data
     DATA_TYPE data;
@@ -110,9 +113,12 @@ void talkToServer(int sock)
         {
             case 1:
                 sendName(sock);
+		getFile(sock);
                 break;
             case 2:
-                sendNumber(sock);
+		printf("ask for lsdir\n");
+                //sendNumber(sock);
+		getLsdir(sock);
                 break;
         }
         // Break the loop if the user selected option 3 (Quit)
@@ -148,6 +154,15 @@ unsigned int displayMenuAndSendSelection(int sock)
     return response;
 }
 
+void getLsdir(int sock) 
+{
+    printf("inside LSDIR\n");
+    unsigned char buffer[5000];
+    memset(buffer, 0, sizeof(buffer));
+    get(sock, buffer, sizeof(buffer));
+    printf("%s\n", buffer);
+}
+
 // Function to send the user's name to the server
 void sendName(int sock)
 {
@@ -155,17 +170,22 @@ void sendName(int sock)
     unsigned char name[NAME_SIZE];
 
     // Receive the prompt from the server and display it
+    memset(msg, 0, sizeof(msg));
     get(sock, msg, sizeof(msg));
     printf("%s\n", msg);
 
     // Get the user's name and send it to the server
     memset(name, 0, NAME_SIZE);
     fgets(name, NAME_SIZE, stdin);
+    if(name[strlen(name) - 1] == '\n')
+    {
+	    name[strlen(name) - 1 ]= '\0';
+    }
     put(sock, name, NAME_SIZE);
 }
 
 // Function to send the user's number to the server
-void sendNumber(int sock)
+/*void sendNumber(int sock)
 {
     unsigned char msg[21];
     int number;
@@ -178,4 +198,48 @@ void sendNumber(int sock)
     scanf("%d", &number);
     number = htonl(number);
     put(sock, &number, sizeof(int));
+} */
+
+void get(int sock, void *buffer, unsigned int bufferSize)
+{
+   int totalBytesReceived = 0;
+   int bytesReceived = 0;
+
+   while (totalBytesReceived < bufferSize) {
+	   bytesReceived = recv(sock, buffer + toalBytesReceived, bufferSize - totalBytesReceived, 0);
+	   if (bytesReceived < 0)
+	   {
+	   	DieWithError("recv() failed");
+	   } else if (bytesReceived == 0) {
+		   DieWithError("Connection closed prematurely");
+	   }
+	   totalBytesReceived += bytesReceived;
+   }
 }
+
+void put(int sock, void *buffer, unsigned int bufferSize) 
+{
+   int totalBytesSent = 0;
+   int bytesSent = 0;
+
+   while(totalBytesSent < bufferSize) {
+	   bytesSent = send(sock, buffer + totalBytesSent, bufferSize - totalBytesSent, 0);
+	   if (bytesSent < 0){
+		   DieWithError("Send() failed");
+	   }
+	   totalBytesSent += bytesSent;
+   }
+}
+
+void getFile(int Sock) 
+{
+   long fileSize;
+   get(sock, &filesize, sizeof(long));
+   //convert to host order
+   fileSize = ntohl(fileSize);
+   printf("Size of fileL %ld\n", fileSize);
+   char * buffer = (char *)malloc(sizeof(char) * fileSize);
+   get(sock, buffer, filesize);
+   printf("%s\n", buffer);
+}
+	
