@@ -13,7 +13,7 @@
 #include <unistd.h>
 
 #define RCVBUFSIZE 32
-#define NAME_SIZE 32
+#define NAME_SIZE 1024
 #define MAX_FILENAME_LENGTH 256
 #define MAX_LINE_LENGTH 1024
 
@@ -98,8 +98,8 @@ void askForFileName(int socket, char *name, unsigned thunk) {
 }
 
 void HandleTCPClient(int clntSocket) {
-  char menu[] = "\nPlease choose an option:\n1. Get directory listing\n2. "
-                "Select a file\n3. Quit\n";
+  // char menu[] = "\nPlease choose an option:\n1. Get directory listing\n2. "
+  //             "Select a file\n3. Quit\n";
   char recvBuffer[RCVBUFSIZE];
   int recvMsgSize;
   unsigned char name[NAME_SIZE]; // max length
@@ -111,14 +111,12 @@ void HandleTCPClient(int clntSocket) {
   option = sendMenuAndWaitForResponse(clntSocket);
 
   while (option != 3) {
-    // Send menu to client
-    option = sendMenuAndWaitForResponse(clntSocket);
     switch (option) {
     case 1:
       printf("Client chose 1\n");
       // handleDirectoryRequest(clntSocket);
-      askForFileName(clntSocket, (char *)name, sizeof(name));
-      sendFileToClient((char *)name, clntSocket);
+      askForFileName(clntSocket, name, sizeof(name));
+      sendFileToClient(name, clntSocket);
       break;
     case 2:
       printf("Client chose 2\n");
@@ -127,6 +125,8 @@ void HandleTCPClient(int clntSocket) {
       char cwd[1024];
       getcwd(cwd, sizeof(cwd));
       memset(dirbuffer, 0, sizeof(dirbuffer));
+      ls_dir2(cwd, dirbuffer);
+      put(clntSocket, dirbuffer, sizeof(dirbuffer));
       break;
     default:
       printf("Client had wrong input");
@@ -142,7 +142,6 @@ void HandleTCPClient(int clntSocket) {
 
   close(clntSocket); // Close client socket
 }
-#include <unistd.h>
 // Function to receive data from a socket
 void get(int sock, void *buffer, unsigned int bufferSize) {
   int totalBytesReceived = 0; // Total number of bytes received

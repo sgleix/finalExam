@@ -9,7 +9,7 @@
 
 // Constants
 #define RCVBUFSIZE 100
-#define NAME_SIZE 100
+#define NAME_SIZE 1024
 
 // Struct for transmitting data (x, y, operation)
 typedef struct {
