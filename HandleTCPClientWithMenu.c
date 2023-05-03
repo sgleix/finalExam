@@ -97,7 +97,7 @@ void askForFileName(int socket, char *name, unsigned thunk) {
   printf("Received file name from the client: %s\n", name);
 }
 
-void handleTCPClient(int clntSocket) {
+void HandleTCPClient(int clntSocket) {
   char menu[] = "\nPlease choose an option:\n1. Get directory listing\n2. "
                 "Select a file\n3. Quit\n";
   char recvBuffer[RCVBUFSIZE];
@@ -108,10 +108,11 @@ void handleTCPClient(int clntSocket) {
   unsigned char errorMsg[] = "Invalid Choice!";
   unsigned char bye[] = "Bye!";
 
-  while (!quitFlag) {
-    // Send menu to client
-    sendMenuAndWaitForResponse(clntSocket);
+  option = sendMenuAndWaitForResponse(clntSocket);
 
+  while (option != 3) {
+    // Send menu to client
+    option = sendMenuAndWaitForResponse(clntSocket);
     switch (option) {
     case 1:
       printf("Client chose 1\n");
@@ -127,12 +128,9 @@ void handleTCPClient(int clntSocket) {
       getcwd(cwd, sizeof(cwd));
       memset(dirbuffer, 0, sizeof(dirbuffer));
       break;
-    case 3:
-      quitFlag = 1;
-      break;
     default:
-      DieWithError("Invalid option selected.");
-      // NOT supposed to do this!!
+      printf("Client had wrong input");
+      put(clntSocket, errorMsg, sizeof(errorMsg));
       break;
     }
     option = sendMenuAndWaitForResponse(clntSocket);

@@ -64,6 +64,7 @@ int main(int argc, char *argv[]) {
     printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
 
     // Call the function to handle the client connection
+    HandleTCPClient(clntSock);
   }
   /* NOT REACHED */
 }
