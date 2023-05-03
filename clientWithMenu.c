@@ -158,7 +158,7 @@ void getLsdir(int sock) {
 
 // Function to send the user's name to the server
 void sendName(int sock) {
-  unsigned char msg[21];
+  unsigned char msg[80];
   unsigned char name[NAME_SIZE];
 
   // Receive the prompt from the server and display it
@@ -222,12 +222,21 @@ void put(int sock, void *buffer, unsigned int bufferSize) {
 }
 
 void getFile(int sock) {
-  long fileSize;
-  get(sock, &fileSize, sizeof(long));
-  // convert to host order
-  fileSize = ntohl(fileSize);
-  printf("Size of fileL %ld\n", fileSize);
-  char *buffer = (char *)malloc(sizeof(char) * fileSize);
-  get(sock, buffer, fileSize);
-  printf("%s\n", buffer);
+  char msg[2];
+  memset(msg, 0, sizeof(msg));
+  get(sock, msg, sizeof(msg));
+  printf("%s\n", msg);
+  if (strcmp(msg, "0") != 0) {
+
+    long fileSize;
+    get(sock, &fileSize, sizeof(long));
+    // convert to host order
+    fileSize = ntohl(fileSize);
+    printf("File size: %ld\n", fileSize);
+    char *buffer = (char *)malloc(sizeof(char) * fileSize);
+    get(sock, buffer, fileSize);
+    printf("%s\n", buffer);
+  } else {
+    printf("No file found\n");
+  }
 }

@@ -40,10 +40,10 @@ void HandleTCPClient(int);
 void ls_dir2(char *dname, char *buffer);
 
 long findSize(FILE *fp) {
-  fseek(fp, 0, SEEK_END);
+  fseek(fp, 0L, SEEK_END);
 
   long res = ftell(fp);
-  fseek(fp, 0, SEEK_SET);
+  fseek(fp, 0L, SEEK_SET);
   return res;
 }
 
@@ -61,17 +61,23 @@ void ls_dir2(char *dname, char *dst) {
 void sendFileToClient(char *filename, int sock) {
   long fileSize;
   FILE *fp = fopen(filename, "r");
-  if (fp == NULL) {
-    DieWithError("File not found");
+  char msg[2] = "0";
+  if (fp != NULL) {
+    msg[0] = '1';
   }
-  fileSize = findSize(fp);
-  int size = htonl(fileSize);
-  put(sock, &size, sizeof(fileSize));
-  char *buffer = (char *)malloc(sizeof(char) * fileSize);
-  fread(buffer, sizeof(char), fileSize, fp);
-  printf("%s\n", buffer);
-  put(sock, buffer, fileSize);
-  fclose(fp);
+  put(sock, msg, sizeof(msg));
+  if (msg[0] == '1') {
+
+    fileSize = findSize(fp);
+    int size = htonl(fileSize);
+    put(sock, &size, sizeof(fileSize));
+    char *buffer = (char *)malloc(sizeof(char) * fileSize);
+    fread(buffer, sizeof(char), fileSize, fp);
+    printf("%s\n", buffer);
+    put(sock, buffer, fileSize);
+    free(buffer);
+    fclose(fp);
+  }
 }
 
 unsigned int sendMenuAndWaitForResponse(int clntSocket) {
@@ -90,7 +96,7 @@ unsigned int sendMenuAndWaitForResponse(int clntSocket) {
 void askForFileName(int socket, char *name, unsigned thunk) {
   unsigned char msg[80];
   memset(msg, 0, sizeof(msg));
-  strcpy(msg, "Enter file name from list of directories:\n");
+  strcpy(msg, "Enter a file name:\n");
   put(socket, msg, sizeof(msg));
   memset(name, 0, NAME_SIZE);
   get(socket, name, NAME_SIZE);
@@ -139,8 +145,6 @@ void HandleTCPClient(int clntSocket) {
   put(clntSocket, bye, sizeof(bye));
   close(clntSocket);
   printf("Connection with client %d closed.\n", clntSocket);
-
-  close(clntSocket); // Close client socket
 }
 // Function to receive data from a socket
 void get(int sock, void *buffer, unsigned int bufferSize) {
